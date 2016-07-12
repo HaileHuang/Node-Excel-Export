@@ -1,4 +1,5 @@
 require('node-zip');
+var _ = require('underscore');
 var fs = require('fs'),
 Sheet = require('./sheet'),
 SortedMap = require('collections/sorted-map');
@@ -35,18 +36,20 @@ var shareStrings, convertedShareStrings;
 function generateMultiSheets(configs, xlsx) {
 	var i = 1;
 	configs.forEach(function(config) {
-		config.name = config.name ? config.name : ('sheet'+i);
-		i++;
-    var sheet = new Sheet(config, xlsx, shareStrings, convertedShareStrings);
+		var tmpConfig = _.extend({}, config, {'name': 'sheet' + i});
+		var sheet = new Sheet(tmpConfig, xlsx, shareStrings, convertedShareStrings);
 		sheet.generate();
-    convertedShareStrings = sheet.convertedShareStrings
+		convertedShareStrings = sheet.convertedShareStrings
+		i++;
 	});
 }
 
 function generateContentType(configs, xlsx) {
 	var workbook = contentTypeFront;
+	var i = 1;
 	configs.forEach( function(config) {
-		workbook += '<Override PartName="/'+ config.fileName + '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" />';
+		workbook += '<Override PartName="/'+ 'sheet'+ i + '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" />';
+		i++;
 	});
 	workbook += contentTypeBack;
 	xlsx.file('[Content_Types].xml', workbook);
@@ -56,20 +59,20 @@ function generateRel(configs,xlsx) {
 	var workbook = relFront;
 	var i = 1;
 	configs.forEach( function(config) {
-		workbook += '<Relationship Id="rId' + i + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/' + config.name + '.xml"/>';
+		workbook += '<Relationship Id="rId' + i + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/' + 'sheet'+ i + '.xml"/>';
 		i++;
 	});
 	workbook += relBack;
 	xlsx.file('xl/_rels/workbook.xml.rels', workbook);
 	xlsx.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-			  + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' 
-			  + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' 
+			  + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+			  + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'
 			  + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
 }
 
 function generateWorkbook(configs,xlsx) {
 	var workbook = sheetsFront;
-	var i = 1;	
+	var i = 1;
 	configs.forEach( function(config) {
 		workbook += '<sheet name="'+ config.name + '" sheetId="' + i +'" r:id="rId' + i + '"/>';
 		i++;
@@ -99,8 +102,8 @@ exports.execute = function(config) {
 		checkCRC32: false
 	});
 	shareStrings = new SortedMap();
-	convertedShareStrings = "";  
-  
+	convertedShareStrings = "";
+
 	var configs = [];
 	if (config instanceof Array) {
 		configs = config;
@@ -110,7 +113,7 @@ exports.execute = function(config) {
 	generateMultiSheets(configs, xlsx);
 	generateWorkbook(configs, xlsx);
 	generateRel(configs,xlsx) ;
-	generateContentType(configs, xlsx); 
+	generateContentType(configs, xlsx);
 	generateSharedStringsFile(xlsx);
 	var results = xlsx.generate({
 		base64: false,
